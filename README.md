@@ -45,6 +45,57 @@ I considered using the VictoriaMetrics as they have solid [engineering blog](htt
 I assume they know better than me, and their product is comparable or better than Clickhouse depending on use cases.
 However I didn't give it fair chance since Clickhouse seemed safer option given the scope. 
 
+
+## Idempotency/Deduplication
+
+Events are deduplicated based on the combination of:
+- `event_name`
+- `user_id`
+- `timestamp`
+- `channel`
+
+Events with identical values for these fields are considered duplicates and will be handled idempotently.
+
+When an event is received, the service checks Redis to see if an event with the same deduplication key has already been processed. If is skipped and we return a 200 OK response.
+
+## Consistency Model (spoiler: none)
+I started with sync post event endpoint and sync DB writes. Strong consistency, EZPZ.  
+But it barely worked with smoke test.  
+
+
+Then I switched to Clickhouse's [async insert](https://clickhouse.com/docs/optimize/asynchronous-inserts) feature,
+assuming it would be eventually consistent. It turned (i.e. I read the rest of the doc) out that async inserts are kept in clickhouse server memory. So it is not durable. On server crash/restart data would be lost.
+They probably have some graceful shutdown mechanism but not all shutdown are graceful. Sometimes computers literally explode. Tough luck out there, right?
+
+Performance wise it was better but still not good enough for the load tests.
+
+Since I lost consistency guarantees anyway, why not give up?  
+So I started using a buffered channel in the application to batch inserts. Uncool name is "fire-and-forget" mode.
+
+A way to fix durability is to use a local file-based queue or sqlite/boltdb. So the endpoint would write to disk and sync the writes to clickhouse in the background. this would guarantee no data loss on crashes.  
+We can mention the https://sqlite.org/fasterthanfs.html article to claim that sqlite is faster file writes etc. (yeah, the article is about the small blobs which are so much larger than our event records but still...)
+
+Other alternatives are using Kafka/RabbitMQ etc. but I am not sure whether they would make a significant difference.
+Yet another alternative could be using Redis for queuing. It should be quite fast - except that Redis itself is not durable unless you configure [AOF persistence](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/#aof-advantages).
+
+## Columnar Insertion
+I have provided a bulk event ingestion endpoint at `/events/bulk`.
+When I wrote it I used the columnar insertion to improve performance.
+At the time the post event endpoint did not have application level batching.
+During the refactor I used the same columnar insertion method for single events as well.
+So that is another +.
+
+## Load Test Setup
+As usual I had Cursor/Co-Pilot prepare me a load testing setup with k6.
+It even integrated with Grafana (over influxDB) and prepared a neat dashboard (I had to debug some silly mistakes but was worth the ROI)
+
+<!-- See image at ![image](dashboard.png) -->
+<!-- Embed the image instead -->
+![image](dashboard0.png)
+ps. Never ask a developer (me) why there is sudden drop in request rate after increasing to 8k RPS.
+
+![image](dashboard1.png)
+
 ## Quick Start
 
 ### Using Docker Compose (Recommended)
@@ -202,56 +253,6 @@ curl -X GET "http://localhost:50051/metrics?event_name=purchase&from=1732147200&
    ```
    
    The Dockerfile automatically generates Swagger docs during the build process.
-
-## Idempotency/Deduplication
-
-Events are deduplicated based on the combination of:
-- `event_name`
-- `user_id`
-- `timestamp`
-- `channel`
-
-Events with identical values for these fields are considered duplicates and will be handled idempotently.
-
-When an event is received, the service checks Redis to see if an event with the same deduplication key has already been processed. If is skipped and we return a 200 OK response.
-
-## Consistency Model (spoiler: none)
-I started with sync post event endpoint and sync DB writes. Strong consistency, EZPZ.  
-But it barely worked with smoke test.  
-
-
-Then I switched to Clickhouse's [async insert](https://clickhouse.com/docs/optimize/asynchronous-inserts) feature,
-assuming it would be eventually consistent. It turned (i.e. I read the rest of the doc) out that async inserts are kept in clickhouse server memory. So it is not durable. On server crash/restart data would be lost.
-They probably have some graceful shutdown mechanism but not all shutdown are graceful. Sometimes computers literally explode. Tough luck out there, right?
-
-Performance wise it was better but still not good enough for the load tests.
-
-Since I lost consistency guarantees anyway, why not give up?  
-So I started using a buffered channel in the application to batch inserts. Uncool name is "fire-and-forget" mode.
-
-A way to fix durability is to use a local file-based queue or sqlite/boltdb. So the endpoint would write to disk and sync the writes to clickhouse in the background. this would guarantee no data loss on crashes.  
-We can mention the https://sqlite.org/fasterthanfs.html article to claim that sqlite is faster file writes etc. (yeah, the article is about the small blobs which are so much larger than our event records but still...)
-
-Other alternatives are using Kafka/RabbitMQ etc. but I am not sure whether they would make a significant difference.
-Yet another alternative could be using Redis for queuing. It should be quite fast - except that Redis itself is not durable unless you configure [AOF persistence](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/#aof-advantages).
-
-## Columnar Insertion
-I have provided a bulk event ingestion endpoint at `/events/bulk`.
-When I wrote it I used the columnar insertion to improve performance.
-At the time the post event endpoint did not have application level batching.
-During the refactor I used the same columnar insertion method for single events as well.
-So that is another +.
-
-## Load Test Setup
-As usual I had Cursor/Co-Pilot prepare me a load testing setup with k6.
-It even integrated with Grafana (over influxDB) and prepared a neat dashboard (I had to debug some silly mistakes but was worth the ROI)
-
-<!-- See image at ![image](dashboard.png) -->
-<!-- Embed the image instead -->
-![image](dashboard0.png)
-ps. Never ask a developer (me) why there is sudden drop in request rate after increasing to 8k RPS.
-
-![image](dashboard1.png)
 
 
 ## Environment Variables
