@@ -1,0 +1,67 @@
+services:
+
+  # Redis - In-memory database for leaderboards and caching
+  redis:
+    image: redis:8-alpine
+    container_name: clickhouse-demo-redis-kucukaslan
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - clickhouse-demo-network-kucukaslan
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # clickhouse-demo Microservice - Main application service
+  clickhouse-demo:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    container_name: clickhouse-demo-app-kucukaslan
+    ports:
+      - "50051:50051"
+    environment:
+      - PORT=50051
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - AWS_DEFAULT_REGION=us-east-1
+      - REDIS_ENDPOINT=redis:6379
+      - ENV=production
+      - LOG_LEVEL=ERROR
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - clickhouse-demo-network-kucukaslan
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -an | grep 50051 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.10.2.65-alpine
+    container_name: clickhouse-demo-clickhouse-kucukaslan
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./data/clickhouse:/var/lib/clickhouse
+    networks:
+      - clickhouse-demo-network-kucukaslan
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --query='SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+networks:
+  clickhouse-demo-network-kucukaslan:
+    driver: bridge
+    name: clickhouse-demo-network-kucukaslan
