@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <users>
+        <!-- Default user for local access only -->
+        <default>
+            <networks>
+                <ip>::1</ip>
+                <ip>127.0.0.1</ip>
+            </networks>
+        </default>
+        
+        <!-- Application user with network access -->
+        <app>
+            <password>clickhouse_app_password</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <access_management>1</access_management>
+        </app>
+    </users>
+</clickhouse>

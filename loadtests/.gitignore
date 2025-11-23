@@ -1,0 +1,11 @@
+# k6 test results
+results/*.json
+results/*.csv
+results/*.html
+
+# Keep the directory
+!results/.gitkeep
+
+# Temporary files
+*.tmp
+*.log

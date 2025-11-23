@@ -1,0 +1,259 @@
+{
+  "title": "k6 Load Testing Dashboard",
+  "tags": ["k6", "load-testing"],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 0,
+  "refresh": "5s",
+  "panels": [
+      {
+        "id": 1,
+        "title": "Virtual Users",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "measurement": "vus",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "mean", "params": []}]],
+            "groupBy": [{"type": "time", "params": ["$__interval"]}, {"type": "fill", "params": ["linear"]}]
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10,
+              "showPoints": "never"
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "legend": {"displayMode": "list", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 2,
+        "title": "Request Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "measurement": "http_reqs",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "sum", "params": []}]],
+            "groupBy": [{"type": "time", "params": ["$__interval"]}, {"type": "fill", "params": ["linear"]}]
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10,
+              "showPoints": "never"
+            },
+            "unit": "reqps"
+          }
+        },
+        "options": {
+          "legend": {"displayMode": "list", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 3,
+        "title": "Response Time - POST /events",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+        "targets": [
+          {
+            "measurement": "event_post_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "percentile", "params": [95]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "p95"
+          },
+          {
+            "measurement": "event_post_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "percentile", "params": [99]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "p99"
+          },
+          {
+            "measurement": "event_post_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "mean", "params": []}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "avg"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 0,
+              "showPoints": "never"
+            },
+            "unit": "ms"
+          }
+        },
+        "options": {
+          "legend": {"displayMode": "list", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 4,
+        "title": "Response Time - POST /events/bulk",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+        "targets": [
+          {
+            "measurement": "bulk_post_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "percentile", "params": [95]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "p95"
+          },
+          {
+            "measurement": "bulk_post_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "percentile", "params": [99]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "p99"
+          },
+          {
+            "measurement": "bulk_post_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "mean", "params": []}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "avg"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 0,
+              "showPoints": "never"
+            },
+            "unit": "ms"
+          }
+        },
+        "options": {
+          "legend": {"displayMode": "list", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 5,
+        "title": "Response Time - GET /metrics",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+        "targets": [
+          {
+            "measurement": "metrics_query_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "percentile", "params": [95]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "p95"
+          },
+          {
+            "measurement": "metrics_query_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "percentile", "params": [99]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "p99"
+          },
+          {
+            "measurement": "metrics_query_duration",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "mean", "params": []}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "avg"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 0,
+              "showPoints": "never"
+            },
+            "unit": "ms"
+          }
+        },
+        "options": {
+          "legend": {"displayMode": "list", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 6,
+        "title": "Error Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "measurement": "errors",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "mean", "params": []}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "Error Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10,
+              "showPoints": "never"
+            },
+            "unit": "percentunit",
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "options": {
+          "legend": {"displayMode": "list", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 7,
+        "title": "Request Count by Endpoint",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "measurement": "events_posted",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "sum", "params": []}, {"type": "non_negative_derivative", "params": ["1s"]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "POST /events"
+          },
+          {
+            "measurement": "bulk_events_posted",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "sum", "params": []}, {"type": "non_negative_derivative", "params": ["1s"]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "POST /events/bulk"
+          },
+          {
+            "measurement": "metrics_queried",
+            "select": [[{"type": "field", "params": ["value"]}, {"type": "sum", "params": []}, {"type": "non_negative_derivative", "params": ["1s"]}]],
+            "groupBy": [{"type": "time", "params": ["10s"]}, {"type": "fill", "params": ["null"]}],
+            "alias": "GET /metrics"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20,
+              "showPoints": "never",
+              "stacking": {"mode": "none"}
+            },
+            "unit": "reqps",
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "options": {
+          "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+          "tooltip": {"mode": "multi", "sort": "desc"}
+        }
+      }
+    ],
+    "time": {"from": "now-5m", "to": "now"},
+    "timepicker": {"refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]}
+  }
+

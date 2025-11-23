@@ -1,0 +1,387 @@
+{
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "Event tracking and analytics service using ClickHouse and Redis",
+        "title": "ClickHouse Event Tracking API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/events": {
+            "post": {
+                "description": "Submit event data for tracking and analytics",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Post event data",
+                "parameters": [
+                    {
+                        "description": "Event data",
+                        "name": "event",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.EventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Event posted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/domain.EventResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.EventResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.EventResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/events/bulk": {
+            "post": {
+                "description": "Submit multiple events in a single request for high-throughput ingestion. Uses columnar batch inserts for optimal performance.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Post bulk event data",
+                "parameters": [
+                    {
+                        "description": "Array of event data",
+                        "name": "events",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.BulkEventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bulk events posted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/domain.BulkEventResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.BulkEventResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.BulkEventResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check the health status of the service and its dependencies",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check endpoint",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy",
+                        "schema": {
+                            "$ref": "#/definitions/domain.HealthResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service is unhealthy",
+                        "schema": {
+                            "$ref": "#/definitions/domain.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/metrics": {
+            "get": {
+                "description": "Query aggregated event metrics with filtering and grouping",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Metrics"
+                ],
+                "summary": "GET aggregated metrics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event name filter",
+                        "name": "event_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Start timestamp (Unix seconds)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "End timestamp (Unix seconds)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group by field (hour, day, week, month, year, channel, campaign_id, user_id, event_name)",
+                        "name": "group_by",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Metrics retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MetricResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MetricResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MetricResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "buildinfo.Info": {
+            "type": "object",
+            "properties": {
+                "buildDate": {
+                    "type": "string",
+                    "example": "2025-11-22T10:00:00Z"
+                },
+                "commit": {
+                    "type": "string",
+                    "example": "abc123def456"
+                },
+                "goVersion": {
+                    "type": "string",
+                    "example": "go1.25.4"
+                },
+                "hostname": {
+                    "type": "string",
+                    "example": "app-server-01"
+                },
+                "uptime": {
+                    "type": "integer",
+                    "example": 3600000000000
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v1.0.0"
+                }
+            }
+        },
+        "domain.BulkEventRequest": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.EventRequest"
+                    }
+                }
+            }
+        },
+        "domain.BulkEventResponse": {
+            "type": "object",
+            "properties": {
+                "failure_count": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Bulk events posted successfully"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "success_count": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "total_count": {
+                    "type": "integer",
+                    "example": 100
+                }
+            }
+        },
+        "domain.EventRequest": {
+            "type": "object",
+            "properties": {
+                "campaign_id": {
+                    "type": "string",
+                    "example": "summer_sale_2025"
+                },
+                "channel": {
+                    "type": "string",
+                    "example": "web"
+                },
+                "event_name": {
+                    "type": "string",
+                    "example": "purchase"
+                },
+                "metadata": {
+                    "type": "object"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "mobile",
+                        "premium"
+                    ]
+                },
+                "timestamp": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 1732233600
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "user123"
+                }
+            }
+        },
+        "domain.EventResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Event posted successfully"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "domain.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "buildInfo": {
+                    "$ref": "#/definitions/buildinfo.Info"
+                },
+                "services": {
+                    "$ref": "#/definitions/domain.ServiceHealthStatus"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "healthy"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "example": "2025-11-22T10:00:00Z"
+                }
+            }
+        },
+        "domain.MetricResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Metrics retrieved successfully"
+                },
+                "metrics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.MetricResult"
+                    }
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "domain.MetricResult": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "description": "The \"Bucket\" holds the group name (e.g., \"2024-08-25 10:00:00\" or \"mobile\")",
+                    "type": "string"
+                },
+                "total_events": {
+                    "type": "integer"
+                },
+                "unique_users": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ServiceHealthStatus": {
+            "type": "object",
+            "properties": {
+                "clickhouse": {
+                    "$ref": "#/definitions/domain.ServiceStatus"
+                },
+                "redis": {
+                    "$ref": "#/definitions/domain.ServiceStatus"
+                }
+            }
+        },
+        "domain.ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": ""
+                },
+                "status": {
+                    "type": "string",
+                    "example": "healthy"
+                }
+            }
+        }
+    }
+}

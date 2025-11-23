@@ -21,15 +21,22 @@ services:
     build:
       context: ./src
       dockerfile: Dockerfile
+      no_cache: true
     container_name: clickhouse-demo-app-kucukaslan
     ports:
       - "50051:50051"
     environment:
       - PORT=50051
-      - AWS_ACCESS_KEY_ID=dummy
-      - AWS_SECRET_ACCESS_KEY=dummy
-      - AWS_DEFAULT_REGION=us-east-1
+
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
+      - CLICKHOUSE_DATABASE=default
+      - CLICKHOUSE_USER=app
+      - CLICKHOUSE_PASSWORD=clickhouse_app_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - REDIS_ENDPOINT=redis:6379
+      - REDIS_PASSWORD=
       - ENV=production
       - LOG_LEVEL=ERROR
     depends_on:
@@ -41,7 +48,7 @@ services:
       - clickhouse-demo-network-kucukaslan
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "netstat -an | grep 50051 || exit 1"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:50051/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -54,6 +61,7 @@ services:
       - "9000:9000"
     volumes:
       - ./data/clickhouse:/var/lib/clickhouse
+      - ./config/clickhouse/users.xml:/etc/clickhouse-server/users.d/users.xml
     networks:
       - clickhouse-demo-network-kucukaslan
     healthcheck:
@@ -61,7 +69,94 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Redis Commander - Web UI for Redis
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: clickhouse-demo-redis-ui-kucukaslan
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - clickhouse-demo-network-kucukaslan
+    restart: unless-stopped
+
+  # k6 - Load testing tool
+  k6:
+    image: grafana/k6:latest
+    container_name: clickhouse-demo-k6-kucukaslan
+    volumes:
+      - ./loadtests:/scripts
+      - ./loadtests/results:/results
+    environment:
+      - BASE_URL=http://clickhouse-demo:50051
+      - VUS=${VUS:-10}
+      - DURATION=${DURATION:-1m}
+      - TIMESTAMP_MODE=${TIMESTAMP_MODE:-recent}
+      - K6_OUT=${K6_OUT:-}
+    depends_on:
+        clickhouse-demo:
+          condition: service_healthy
+    networks:
+      - clickhouse-demo-network-kucukaslan
+    entrypoint: ["k6"]
+    profiles:
+      - load-test
+
+  # InfluxDB - Time-series database for k6 metrics
+  influxdb:
+    image: influxdb:1.8
+    container_name: clickhouse-demo-influxdb-kucukaslan
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
+      - INFLUXDB_HTTP_AUTH_ENABLED=false
+      - INFLUXDB_HTTP_MAX_BODY_SIZE=52428800
+      - INFLUXDB_DATA_MAX_VALUES_PER_TAG=1000000
+      - INFLUXDB_DATA_MAX_SERIES_PER_DATABASE=1000000
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+    networks:
+      - clickhouse-demo-network-kucukaslan
+    profiles:
+      - monitoring
+
+  # Grafana - Visualization dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: clickhouse-demo-grafana-kucukaslan
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - clickhouse-demo-network-kucukaslan
+    depends_on:
+      - influxdb
+    profiles:
+      - monitoring
+
 networks:
   clickhouse-demo-network-kucukaslan:
     driver: bridge
     name: clickhouse-demo-network-kucukaslan
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+
+volumes:
+  influxdb-data:
+  grafana-data:

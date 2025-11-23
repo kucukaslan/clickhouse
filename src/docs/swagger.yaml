@@ -1,0 +1,264 @@
+basePath: /
+definitions:
+  buildinfo.Info:
+    properties:
+      buildDate:
+        example: "2025-11-22T10:00:00Z"
+        type: string
+      commit:
+        example: abc123def456
+        type: string
+      goVersion:
+        example: go1.25.4
+        type: string
+      hostname:
+        example: app-server-01
+        type: string
+      uptime:
+        example: 3600000000000
+        type: integer
+      version:
+        example: v1.0.0
+        type: string
+    type: object
+  domain.BulkEventRequest:
+    properties:
+      events:
+        items:
+          $ref: '#/definitions/domain.EventRequest'
+        type: array
+    type: object
+  domain.BulkEventResponse:
+    properties:
+      failure_count:
+        example: 0
+        type: integer
+      message:
+        example: Bulk events posted successfully
+        type: string
+      success:
+        example: true
+        type: boolean
+      success_count:
+        example: 100
+        type: integer
+      total_count:
+        example: 100
+        type: integer
+    type: object
+  domain.EventRequest:
+    properties:
+      campaign_id:
+        example: summer_sale_2025
+        type: string
+      channel:
+        example: web
+        type: string
+      event_name:
+        example: purchase
+        type: string
+      metadata:
+        type: object
+      tags:
+        example:
+        - mobile
+        - premium
+        items:
+          type: string
+        type: array
+      timestamp:
+        example: 1732233600
+        minimum: 0
+        type: integer
+      user_id:
+        example: user123
+        type: string
+    type: object
+  domain.EventResponse:
+    properties:
+      message:
+        example: Event posted successfully
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  domain.HealthResponse:
+    properties:
+      buildInfo:
+        $ref: '#/definitions/buildinfo.Info'
+      services:
+        $ref: '#/definitions/domain.ServiceHealthStatus'
+      status:
+        example: healthy
+        type: string
+      timestamp:
+        example: "2025-11-22T10:00:00Z"
+        type: string
+    type: object
+  domain.MetricResponse:
+    properties:
+      message:
+        example: Metrics retrieved successfully
+        type: string
+      metrics:
+        items:
+          $ref: '#/definitions/domain.MetricResult'
+        type: array
+      success:
+        example: true
+        type: boolean
+    type: object
+  domain.MetricResult:
+    properties:
+      bucket:
+        description: The "Bucket" holds the group name (e.g., "2024-08-25 10:00:00"
+          or "mobile")
+        type: string
+      total_events:
+        type: integer
+      unique_users:
+        type: integer
+    type: object
+  domain.ServiceHealthStatus:
+    properties:
+      clickhouse:
+        $ref: '#/definitions/domain.ServiceStatus'
+      redis:
+        $ref: '#/definitions/domain.ServiceStatus'
+    type: object
+  domain.ServiceStatus:
+    properties:
+      message:
+        example: ""
+        type: string
+      status:
+        example: healthy
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Event tracking and analytics service using ClickHouse and Redis
+  title: ClickHouse Event Tracking API
+  version: "1.0"
+paths:
+  /events:
+    post:
+      consumes:
+      - application/json
+      description: Submit event data for tracking and analytics
+      parameters:
+      - description: Event data
+        in: body
+        name: event
+        required: true
+        schema:
+          $ref: '#/definitions/domain.EventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Event posted successfully
+          schema:
+            $ref: '#/definitions/domain.EventResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/domain.EventResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/domain.EventResponse'
+      summary: Post event data
+      tags:
+      - Events
+  /events/bulk:
+    post:
+      consumes:
+      - application/json
+      description: Submit multiple events in a single request for high-throughput
+        ingestion. Uses columnar batch inserts for optimal performance.
+      parameters:
+      - description: Array of event data
+        in: body
+        name: events
+        required: true
+        schema:
+          $ref: '#/definitions/domain.BulkEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bulk events posted successfully
+          schema:
+            $ref: '#/definitions/domain.BulkEventResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/domain.BulkEventResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/domain.BulkEventResponse'
+      summary: Post bulk event data
+      tags:
+      - Events
+  /health:
+    get:
+      description: Check the health status of the service and its dependencies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy
+          schema:
+            $ref: '#/definitions/domain.HealthResponse'
+        "503":
+          description: Service is unhealthy
+          schema:
+            $ref: '#/definitions/domain.HealthResponse'
+      summary: Health check endpoint
+      tags:
+      - Health
+  /metrics:
+    get:
+      description: Query aggregated event metrics with filtering and grouping
+      parameters:
+      - description: Event name filter
+        in: query
+        name: event_name
+        type: string
+      - description: Start timestamp (Unix seconds)
+        in: query
+        name: from
+        type: integer
+      - description: End timestamp (Unix seconds)
+        in: query
+        name: to
+        type: integer
+      - description: Group by field (hour, day, week, month, year, channel, campaign_id,
+          user_id, event_name)
+        in: query
+        name: group_by
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Metrics retrieved successfully
+          schema:
+            $ref: '#/definitions/domain.MetricResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/domain.MetricResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/domain.MetricResponse'
+      summary: GET aggregated metrics
+      tags:
+      - Metrics
+schemes:
+- http
+swagger: "2.0"
